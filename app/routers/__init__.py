@@ -1,7 +1,7 @@
-from app.routers import auth, utilisateurs
-
+from app.routers import auth, logements, utilisateurs
 
 __all__ = [
     "auth",
+    "logements",
     "utilisateurs",
 ]
