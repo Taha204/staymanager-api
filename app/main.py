@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from sqlalchemy import text
 
 from app.database import engine
-from app.routers import auth, logements, utilisateurs
+from app.routers import auth, logements, utilisateurs, reservations
 
 app = FastAPI(
     title="StayManager API",
@@ -12,7 +12,8 @@ app = FastAPI(
 
 app.include_router(auth.router)
 app.include_router(utilisateurs.router)
-app.include_router(logements.router)
+app.include_router(logements.router)    
+app.include_router(reservations.router)
 
 @app.get("/health", tags=["Santé"])
 def health():
