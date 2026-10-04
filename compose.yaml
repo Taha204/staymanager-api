@@ -2,20 +2,47 @@ services:
   oracle:
     image: gvenzl/oracle-free:23-slim
     container_name: staymanager-oracle
+
     environment:
       ORACLE_PASSWORD: ${ORACLE_PASSWORD}
       APP_USER: ${APP_USER}
       APP_USER_PASSWORD: ${APP_USER_PASSWORD}
+
     ports:
       - "1521:1521"
+
     volumes:
       - staymanager_oradata:/opt/oracle/oradata
+
     healthcheck:
       test: ["CMD", "healthcheck.sh"]
       interval: 10s
       timeout: 5s
       retries: 30
       start_period: 60s
+
+    restart: unless-stopped
+
+  api:
+    build: .
+    container_name: staymanager-api
+
+    environment:
+      DATABASE_URL: oracle+oracledb://${APP_USER}:${APP_USER_PASSWORD}@oracle:1521/?service_name=FREEPDB1
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      oracle:
+        condition: service_healthy
+
+    command: >
+      sh -c "python -m alembic upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
     restart: unless-stopped
 
 volumes:
