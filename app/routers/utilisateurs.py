@@ -16,13 +16,33 @@ from app.schemas.utilisateurs import (
     UtilisateurInscription,
     UtilisateurLecture,
 )
-from app.security import get_current_user, hash_password
+from app.security import (
+    get_current_user,
+    hash_password,
+    require_admin,
+)
 
 
 router = APIRouter(
     prefix="/users",
     tags=["Utilisateurs"],
 )
+
+
+DB = Annotated[
+    Session,
+    Depends(get_db),
+]
+
+UtilisateurConnecte = Annotated[
+    Utilisateur,
+    Depends(get_current_user),
+]
+
+Admin = Annotated[
+    Utilisateur,
+    Depends(require_admin),
+]
 
 
 @router.post(
@@ -32,9 +52,9 @@ router = APIRouter(
 )
 def inscrire_utilisateur(
     donnees: UtilisateurInscription,
-    db: Session = Depends(get_db),
+    db: DB,
 ):
-    email_normalise = donnees.email.lower()
+    email_normalise = donnees.email.strip().lower()
 
     utilisateur_existant = db.scalar(
         select(Utilisateur).where(
@@ -45,7 +65,10 @@ def inscrire_utilisateur(
     if utilisateur_existant is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Cette adresse email est déjà utilisée",
+            detail=(
+                "Cette adresse email "
+                "est déjà utilisée"
+            ),
         )
 
     utilisateur = Utilisateur(
@@ -57,7 +80,9 @@ def inscrire_utilisateur(
             if donnees.telephone
             else None
         ),
-        password_hash=hash_password(donnees.password),
+        password_hash=hash_password(
+            donnees.password
+        ),
         role="CLIENT",
         actif=True,
     )
@@ -73,7 +98,10 @@ def inscrire_utilisateur(
 
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Impossible de créer cet utilisateur",
+            detail=(
+                "Impossible de créer "
+                "cet utilisateur"
+            ),
         )
 
     return utilisateur
@@ -84,9 +112,22 @@ def inscrire_utilisateur(
     response_model=UtilisateurLecture,
 )
 def lire_mon_profil(
-    utilisateur: Annotated[
-        Utilisateur,
-        Depends(get_current_user),
-    ],
+    utilisateur: UtilisateurConnecte,
 ):
     return utilisateur
+
+
+@router.get(
+    "",
+    response_model=list[UtilisateurLecture],
+)
+def lister_utilisateurs(
+    db: DB,
+    admin: Admin,
+):
+    requete = (
+        select(Utilisateur)
+        .order_by(Utilisateur.user_id)
+    )
+
+    return db.scalars(requete).all()

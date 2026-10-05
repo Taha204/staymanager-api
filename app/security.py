@@ -54,13 +54,18 @@ def authenticate_user(
     email: str,
     password: str,
 ) -> Utilisateur | None:
+    email_normalise = email.strip().lower()
+
     utilisateur = db.scalar(
         select(Utilisateur).where(
-            Utilisateur.email == email.lower()
+            Utilisateur.email == email_normalise
         )
     )
 
     if utilisateur is None:
+        return None
+
+    if not utilisateur.actif:
         return None
 
     if not verify_password(
